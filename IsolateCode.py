@@ -26,7 +26,7 @@ if __name__ == "__main__":
     topologies += find_files_by_extension(".", "parm7")  # Amber simulations
     trajectories = find_files_by_extension(".", "dcd")
     topologies = sorted(topologies)
-    trajectories = sorted(trajectories[2:4])
+    trajectories = sorted(trajectories)
 
     # isolate amino acids in pdbs and dcds files
     for coords, top in zip(trajectories, topologies):
