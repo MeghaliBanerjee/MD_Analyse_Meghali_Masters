@@ -23,6 +23,7 @@ if __name__ == "__main__":
 
     # load in files
     topologies = find_files_by_extension(".", "pdb")  # NAMD simulations
+    topologies += find_files_by_extension(".", "parm7")  # Amber simulations
     trajectories = find_files_by_extension(".", "dcd")
     topologies = sorted(topologies)
     trajectories = sorted(trajectories[2:4])
