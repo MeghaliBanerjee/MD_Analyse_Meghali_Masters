@@ -32,8 +32,10 @@ if __name__ == "__main__":
         name = coords[2:].rsplit(".", 1)[0]
         print(f"Using sim {name}")
         traj = md.load(coords, top=top)  # load in as trajectory
+
         residue_indices = traj.topology.select("protein")  # find indices for residue
         isolate_traj = traj.atom_slice(residue_indices)  # isolate these indices in trajectory
+
         print(f"Saving files for {name}")
-        md.Trajectory.save_pdb(isolate_traj, f"{name}_isolated.pdb")
-        md.Trajectory.save_dcd(isolate_traj, f"{name}_isolated.dcd")
+        isolate_traj[0].save(f"{name}_isolated.pdb")
+        isolate_traj.save(f"{name}_isolated.dcd")
