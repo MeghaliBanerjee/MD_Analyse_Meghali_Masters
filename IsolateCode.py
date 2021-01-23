@@ -1,6 +1,7 @@
 # script to isolate amino acid proteins and save pdb and dcd files
 
 import mdtraj as md
+import numpy as np
 import time
 import os
 import pandas as pd
@@ -28,15 +29,36 @@ if __name__ == "__main__":
     topologies = sorted(topologies)
     trajectories = sorted(trajectories)
 
-    # isolate amino acids in pdbs and dcds files
     for coords, top in zip(trajectories, topologies):
         name = coords[2:].rsplit(".", 1)[0]
         print(f"Using sim {name}")
-        traj = md.load(coords, top=top)  # load in as trajectory
 
-        residue_indices = traj.topology.select("protein")  # find indices for residue
-        isolate_traj = traj.atom_slice(residue_indices)  # isolate these indices in trajectory
+        # load in as trajectory
+        traj = md.load(coords, top=top)
+        protein_index = traj.top.select("protein")  # find indices for residue
 
-        print(f"Saving files for {name}")
-        isolate_traj[0].save(f"{name}_isolated.pdb")
-        isolate_traj.save(f"{name}_isolated.dcd")
+        # top to dataframe
+        table, bonds = traj.top.to_dataframe()
+
+        #table = table_all.loc[protein_index]
+
+        # rename some proteins
+        mask = table['resName'].str.contains("CY")
+        table.loc[mask, 'resName'] = 'CYS'
+
+        mask2 = table['resName'].str.contains("HD|HE")
+        table.loc[mask2, 'resName'] = 'HIS'
+
+        #shorten table to include only residues SER to ARG
+        start_index = table[table['resName'] == 'SER'].index[0]  # find start index
+        end_index = table[table['resName'] == 'ARG'].index[-1]  # find end index
+        short_table = table.loc[start_index:end_index]  # splice data frame
+
+        #reset index
+        short_table.reset_index(drop=True, inplace=True)
+
+        # topology back from frame
+        top2 = md.Topology.from_dataframe(short_table)
+
+        # shortened table:
+        top2.save(f"{name}_isolatedSpliced.pdb")
