@@ -66,7 +66,7 @@ if __name__ == "__main__":
     # topologies += find_files_by_extension(".", "gro")  # GROMACS simulations
 
     # Next lets get a list of coordinate data files
-    trajectories = find_files_by_extension(".", "dcd")
+    #trajectories = find_files_by_extension(".", "dcd")
     # trajectories += find_files_by_extension(".", "xtc")
 
     # Now let's sort the lists so the directories match

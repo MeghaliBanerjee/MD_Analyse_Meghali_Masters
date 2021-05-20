@@ -4,7 +4,7 @@ import mdtraj as md
 import numpy as np
 import time
 import os
-import pandas as pd
+import re
 
 
 def find_files_by_extension(path, extension, verbose=True):
@@ -20,45 +20,48 @@ def find_files_by_extension(path, extension, verbose=True):
     return list_of_paths
 
 
+def fix_topology(traj):
+    for i, res in enumerate(traj.top._residues):
+        res.resSeq = i
+        if res.name[:2] == "CY":
+            res.name = "CYS"
+        elif res.name[:2] == "HD" or res.name[:2] == "HE":
+            res.name = "HIS"
+    return traj
+
+
 if __name__ == "__main__":
 
     # load in files
-    topologies = find_files_by_extension(".", "pdb")  # NAMD simulations
+    topologies = find_files_by_extension(".", "gro")  # GROMACS simulations
+    topologies += find_files_by_extension(".", "pdb")  # NAMD simulations
     topologies += find_files_by_extension(".", "parm7")  # Amber simulations
-    trajectories = find_files_by_extension(".", "dcd")
+
+    trajectories = find_files_by_extension(".", "xtc")
+    trajectories += find_files_by_extension(".", "dcd")
+
     topologies = sorted(topologies)
     trajectories = sorted(trajectories)
 
     for coords, top in zip(trajectories, topologies):
-        name = coords[2:].rsplit(".", 1)[0]
-        print(f"Using sim {name}")
+        name = coords.split(".")[1].split("\\")[2]
 
-        # load in as trajectory
-        traj = md.load(coords, top=top)
-        protein_index = traj.top.select("protein")  # find indices for residue
+        print(f"Using top {top} with traj {coords}")
 
-        # top to dataframe
-        table, bonds = traj.top.to_dataframe()
+        traj = md.load(coords, top=top)  # load in trajectory
 
-        #table = table_all.loc[protein_index]
+        # rename residues
+        traj_fixed = fix_topology(traj)
 
-        # rename some proteins
-        mask = table['resName'].str.contains("CY")
-        table.loc[mask, 'resName'] = 'CYS'
+        # isolate proteins
+        protein_index = traj_fixed.top.select("protein")  # find indices for atoms part of residue
+        isolated_traj = md.Trajectory.atom_slice(traj_fixed[0], protein_index)  # trajectory isolated
 
-        mask2 = table['resName'].str.contains("HD|HE")
-        table.loc[mask2, 'resName'] = 'HIS'
+        # shorten topology to include only residues SER to ARG
+        ser_index = [atom.index for atom in isolated_traj.top.atoms if (atom.residue.name == "SER")]
+        arg_index = [atom.index for atom in isolated_traj.top.atoms if (atom.residue.name == "ARG")]
 
-        #shorten table to include only residues SER to ARG
-        start_index = table[table['resName'] == 'SER'].index[0]  # find start index
-        end_index = table[table['resName'] == 'ARG'].index[-1]  # find end index
-        short_table = table.loc[start_index:end_index]  # splice data frame
+        shorter_traj = md.Trajectory.atom_slice(isolated_traj[0],
+                                                range(ser_index[0], arg_index[-1]))  # trajectory isolated
 
-        #reset index
-        short_table.reset_index(drop=True, inplace=True)
-
-        # topology back from frame
-        top2 = md.Topology.from_dataframe(short_table)
-
-        # shortened table:
-        top2.save(f"{name}_isolatedSpliced.pdb")
+        shorter_traj[0].save(f'IsolatedSpliced\\{name}_isolatedSpliced.pdb')
